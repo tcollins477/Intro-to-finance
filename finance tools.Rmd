@@ -1,0 +1,50 @@
+---
+title: "Finance Tools"
+author: "TJC"
+date: "2023-01-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#Note that the `echo = FALSE` parameter was added to the code chunk to prevent #printing of the R code that generated the plot.
+
+##attach libraries
+#install.packages('quantmod')
+#install.packages('broom')
+
+library(quantmod)
+library(ggplot2)
+library(magrittr)
+library(broom)
+
+```
+
+```{r time_range}
+
+start = as.Date("2020-01-01") 
+end = as.Date("2023-01-11")
+
+##date format yyyy-mm-dd
+
+```
+
+```{r get_price_data}
+
+getSymbols(c("AAPL", "GOOGL", "MSFT","^GSPC"), src = "yahoo", from = start, to = end)
+
+##source is yahoo finance
+
+##Organize retrived stock prices as a data frame
+stocks = as.xts(data.frame(A = AAPL[, "AAPL.Adjusted"], 
+B = GOOGL[, "GOOGL.Adjusted"], C = MSFT[, "MSFT.Adjusted"], 
+E = GSPC[,"GSPC.Adjusted"]))
+names(stocks) = c("Apple", "Google", "Microsoft","S&P 500")
+index(stocks) = as.Date(index(stocks))
+
+```
+
+
+
+
