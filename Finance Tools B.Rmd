@@ -1,0 +1,28 @@
+---
+title: "Finance Tools B"
+author: "TJC"
+date: "2023-01-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+##attach libraries
+library(quantmod) #install.packages('quantmod')
+library(xts) #install.packages('xts')
+library(ggplot2) #install.packages('ggplot2')
+library(gridExtra) #install.packages('gridExtra') # grid.arrange
+
+graphics.off()
+rm(list=ls())
+
+
+
+```
+
+
+
+
+
