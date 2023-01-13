@@ -11,10 +11,10 @@ knitr::opts_chunk$set(echo = TRUE)
 #Note that the `echo = FALSE` parameter was added to the code chunk to prevent #printing of the R code that generated the plot.
 
 ##attach libraries
-#install.packages('quantmod')
+
 #install.packages('broom')
 
-library(quantmod)
+library(quantmod) #install.packages('quantmod')
 library(ggplot2)
 library(magrittr)
 library(broom)
@@ -30,7 +30,7 @@ end = as.Date("2023-01-11")
 
 ```
 
-```{r get_price_data}
+```{r get_price_data01}
 
 getSymbols(c("AAPL", "GOOGL", "MSFT","^GSPC"), src = "yahoo", from = start, to = end)
 
@@ -42,6 +42,79 @@ B = GOOGL[, "GOOGL.Adjusted"], C = MSFT[, "MSFT.Adjusted"],
 E = GSPC[,"GSPC.Adjusted"]))
 names(stocks) = c("Apple", "Google", "Microsoft","S&P 500")
 index(stocks) = as.Date(index(stocks))
+
+```
+
+
+```{r plot_data01}
+
+#without facet
+
+stocks_series = tidy(stocks) %>% 
+  
+  ggplot(aes(x=index,y=value, color=series)) +
+  labs(title = "Top Three US Tech Comany and S&P 500: Daily Stock Prices January 2020 - January 2021 (1)",
+       
+       subtitle = "End of Day Adjusted Prices",
+       caption = " Source: Yahoo Finance") +
+  
+  xlab("Date") + ylab("Price") +
+  scale_color_manual(values = c("Red", "Black", "DarkBlue","Orange"))+
+  geom_line()
+stocks_series
+
+```
+
+```{r plot_data02}
+
+#with facet
+
+stocks_series2 = tidy(stocks) %>% 
+  
+  ggplot(aes(x=index,y=value, color=series)) + 
+  geom_line() +
+  facet_grid(series~.,scales = "free") + 
+  labs(title = "Top Three US Tech Comany and S&P 500: Daily Stock Prices January 2020 - January 2021 (2)",
+                                              
+        subtitle = "End of Day Adjusted Prices",
+        caption = " Source: Yahoo Finance") +
+  
+  xlab("Date") + ylab("Price") +
+  scale_color_manual(values = c("Red", "Black", "DarkBlue","Orange"))
+stocks_series2
+
+```
+
+```{r get_price_data02}
+
+##commodity prices
+
+getSymbols(c("CLH23.NYM", "CLJ23.NYM", "CLK23.NYM","CLM23.NYM"), src = "yahoo", from = start, to = end)
+
+##source is yahoo finance
+
+##Organize retrived stock prices as a data frame
+stocks = as.xts(data.frame(A = CLH23.NYM[, "CLH23.NYM.Adjusted"], 
+B = CLJ23.NYM[, "CLJ23.NYM.Adjusted"], C = CLK23.NYM[, "CLK23.NYM.Adjusted"], 
+E = CLM23.NYM[,"CLM23.NYM.Adjusted"]))
+names(stocks) = c("CLH23", "CLJ23", "CLK23","CLM23")
+index(stocks) = as.Date(index(stocks))
+
+#plot the data with facet
+
+stocks_series2 = tidy(stocks) %>% 
+  
+  ggplot(aes(x=index,y=value, color=series)) + 
+  geom_line() +
+  facet_grid(series~.,scales = "free") + 
+  labs(title = "Crude Oil Futures: Daily Prices",
+                                              
+        subtitle = "End of Day Adjusted Prices",
+        caption = " Source: Yahoo Finance") +
+  
+  xlab("Date") + ylab("Price") +
+  scale_color_manual(values = c("Red", "Black", "DarkBlue","Orange"))
+stocks_series2
 
 ```
 

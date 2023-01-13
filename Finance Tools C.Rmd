@@ -11,12 +11,14 @@ knitr::opts_chunk$set(echo = TRUE)
 ##attach libraries
 
 #install.packages("shiny")
+#install.packages("rlang")
 #install.packages("shinyWidgets")
 #install.packages("shinythemes")
 #install.packages("plotly")
 #install.packages("tidyverse")
 #install.packages("tidyquant")
 
+library(rlang)
 library(shiny)
 library(shinyWidgets)
 library(shinythemes)
