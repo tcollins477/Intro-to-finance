@@ -1,0 +1,54 @@
+---
+title: "Finance Tools C"
+author: "TJC"
+date: "2023-01-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+##attach libraries
+
+#install.packages("shiny")
+#install.packages("shinyWidgets")
+#install.packages("shinythemes")
+#install.packages("plotly")
+#install.packages("tidyverse")
+#install.packages("tidyquant")
+
+library(shiny)
+library(shinyWidgets)
+library(shinythemes)
+library(plotly)
+library(tidyverse)
+library(tidyquant)
+
+```
+
+```{r get_data}
+
+#uses tq_get (from tidyquant) to get prices from Yahoo Finance.
+
+tickers <- c("GRVY","SE","PLTR","U","NET","SNOW","MDB")
+benchmarks <- c("^NDX","^GSPC") # Nasdaq100 and SP500
+prices <- tq_get(tickers, 
+                 get  = "stock.prices",
+                 from = today()-months(12),
+                 to   = today(),
+                 complete_cases = F) %>% 
+    select(symbol,date,close)
+bench <- tq_get(benchmarks,
+                get  = "stock.prices",
+                from = today()-months(12),
+                to   = today()) %>%
+  select(symbol,date,close)
+
+
+```
+
+
+
+
+
+
