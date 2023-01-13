@@ -1,0 +1,120 @@
+---
+title: "Finance Tools E"
+author: "TJC"
+date: "2023-01-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#Introduction to Stock Analysis with R
+#https://lamfo-unb.github.io/2017/07/22/intro-stock-analysis-1/
+
+#attach libraries
+rm(list=ls())
+#install.packages("quantmod")
+#install.packages("ggplot2")
+library(quantmod)
+library(ggplot2)
+
+```
+
+```{r get_data}
+
+pbr <- getSymbols("PBR", src = "yahoo", from = "2020-01-01", to = "2023-01-10", auto.assign = FALSE)
+
+#PBR is the symbol in Yahoo Finance of the stock that we’re going to analyze
+#src= "yahoo" indicates the source of the data
+#The third and fourth arguments indicate the time period in which the data is 
+#going to be extracted, with data in the format “yyyy-mm-dd”
+#auto.assign = FALSE allows us to name the dataset with the name we want. In 
+#case it’s TRUE, the name automatically will be the symbol we’re looking for
+
+#we could identify the working directory for the csv files using the command getwd()
+
+#To read a downloaded .csv we could use the following:
+  #pbr <- read.csv("PBR.csv")
+  #pbr[,1] <- as.Date(pbr[,1])
+  #pbr <- xts(pbr)
+  #pbr <- pbr[,-1]
+
+#read.csv() reads the file and assigns it to an object
+#we transform the first column of the base to date format
+#use the command xts() to transform the base from dataframe type to xts
+#remove the first column (date), since now the price lines are already indexed by day
+
+#price visualization
+
+head(pbr)
+tail(pbr)
+summary(pbr)
+str(pbr)
+
+#head() and tail() we can see the first and last 6 lines of the base
+#summary() we verify the descriptive statistics of each price series and volume.
+#6 columns with: opening price, maximum and minimum prices, closing price, volume 
+#of transactions and adjusted price
+
+```
+
+```{r plot_data}
+
+ggplot(pbr, aes(x = index(pbr), y = pbr[,6])) + 
+  geom_line(color = "darkblue") + 
+  ggtitle("Petrobras prices series") + 
+  xlab("Date") + ylab("Price") + 
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  scale_x_date(date_labels = "%b %y", 
+               date_breaks = "6 months")
+
+#We created this graphic using the command ggplot. First, we use the object pbr as the series to be ploted. Then we indicate which elements will be in the axes: index(pbr), the date in x-axis, and the adjusted price column, pbr[,6], in y-axis. Next, we add the element to be ploted, in this case, a blue line: geom_line(color = "darkblue").
+
+#Afterwards, we include the title and names of the axes, with the commands ggtitle("Petrobras prices series"), xlab("Date"), ylab("Price"). By standard, the graph title is aligned to the left. To centralize it, the command theme(plot.title = element_text(hjust = 0.5)) is used.
+
+#Lastly, to make the temporal axis more informative, we put the date tick at every 6 months in the format mmm aa using scale_x_date(date_labels = "%b %y", date_breaks = "6 months")
+
+```
+
+```{r plot_ma}
+
+pbr_mm <- subset(pbr, index(pbr) >= "2016-01-01")
+
+pbr_mm10 <- rollmean(pbr_mm[,6], 10, fill = list(NA, NULL, NA), align = "right")
+pbr_mm30 <- rollmean(pbr_mm[,6], 30, fill = list(NA, NULL, NA), align = "right")
+
+pbr_mm$mm10 <- coredata(pbr_mm10)
+pbr_mm$mm30 <- coredata(pbr_mm30)
+
+#First we subset the base for data since 2016 using the function subset(). Then, we use the function rollmean(), which takes as argument: the series (xt), in this case the adjusted price; the window of periods (q); an optional fill argument, that is used to complete the days where it’s not possible to calculate the moving average, since the enough quantity of days hasn’t passed; the argument align indicates if the moving average should be calculated using the periods in the left, in the center or in the right of the t day of the series. Lastly, we add the MA to two new columns in the initial database.
+
+#We calculated the two MA using 10 and 30 days of windows, filling the values with NA and using the periods in the left. Afterwards, we can plot both series in the same graphic of prices to identify trends. An existing theory in Technical Analysis is the one that when two MA of short and long term cross each other, there is an indication of buying or selling the stock. When the short term MA cross the long term upwards, there’s a buy a signal. When the opposite happens, there’s a sell signal.
+
+#Ploting the prices series and the moving averages for all days since 2016
+
+ggplot(pbr_mm, aes(x = index(pbr_mm))) +
+  geom_line(aes(y = pbr_mm[,6], color = "PBR")) + 
+  ggtitle("Petrobras prices series") +
+  geom_line(aes(y = pbr_mm$mm10, color = "MM10")) +
+  geom_line(aes(y = pbr_mm$mm30, color = "MM30")) + xlab("Date") + 
+  ylab("Price") +
+  theme(plot.title = element_text(hjust = 0.5), panel.border = element_blank()) +
+  scale_x_date(date_labels = "%b %y", date_breaks = "3 months") +
+  scale_colour_manual("Series", values=c("PBR"="gray40", "MM10"="firebrick4", "MM30"="darkcyan"))
+
+#To create the graph, we plot the line of prices and the lines of moving averages. In this case, we plot each line differently, creating a kind of nickname for the color of each one. Then, we add the line scale_colour_manual, indicating the color of each nickname in order to make the color visible in the legend of the graph.
+
+```
+
+```{r returns}
+
+#we first need to create a new object with the calculated returns, using the adjusted prices column:
+
+pbr_ret <- diff(log(pbr[,6]))
+pbr_ret <- pbr_ret[-1,]
+
+
+```
+
+
+
