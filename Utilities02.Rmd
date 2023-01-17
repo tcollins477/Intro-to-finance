@@ -8,6 +8,7 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
+#working directory
 setwd('C:/Users/tcoll/OneDrive/Github/Intro to Finance')     #set working directory
 
 getwd()                         #show working directory
@@ -16,19 +17,27 @@ getwd()                         #show working directory
 
 ```{r libraries}
 
-install.packages("xlsx")
-install.packages("rjava")
-install.packages("xlsxjars")
+#install.packages("xlsx")
+
 
 library("xlsx")
-library("rjava")
-library("xlsxjars")
+
+#create a dataframe df
+
+x<-rnorm(20)
+y<-rnorm(20)
+z<-rnorm(20)
+df<-data.frame(x,y,z)
+df
+
+write.xlsx(df, file="ExcelExport.xlsx", sheetName = "Sheet1")
 
 ```
 
 ```{r dates}
 
 #use sys.Date to set start & end dates
+
 start.date <- Sys.Date()-365
 end.date <- Sys.Date()
 
