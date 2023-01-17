@@ -1,0 +1,39 @@
+---
+title: "Utilities02"
+author: "TJC"
+date: "2023-01-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+setwd('C:/Users/tcoll/OneDrive/Github/Intro to Finance')     #set working directory
+
+getwd()                         #show working directory
+
+```
+
+```{r libraries}
+
+install.packages("xlsx")
+install.packages("rjava")
+install.packages("xlsxjars")
+
+library("xlsx")
+library("rjava")
+library("xlsxjars")
+
+```
+
+```{r dates}
+
+#use sys.Date to set start & end dates
+start.date <- Sys.Date()-365
+end.date <- Sys.Date()
+
+
+```
+
+
+
