@@ -106,15 +106,81 @@ ggplot(pbr_mm, aes(x = index(pbr_mm))) +
 
 ```
 
-```{r returns}
+```{r log_returns}
 
 #we first need to create a new object with the calculated returns, using the adjusted prices column:
 
 pbr_ret <- diff(log(pbr[,6]))
 pbr_ret <- pbr_ret[-1,]
 
+#What we’ve done here was using logarithm properties to calculate the log-return of the stock. 
+
+#The diff command calculates the difference of all values in any vector or element. With this, we only apply the difference to natural logarithms of stock prices.
 
 ```
+
+```{r returns}
+
+#it’s possible to calculate returns differently. The package quantmod has some interesting functions to do this. Firstly, it’s really simple to select only one column of prices of each stock.
+
+Op(pbr)
+Cl(pbr)
+Ad(pbr)
+
+#Each line will have as output the opening, closing and adjusted prices, respectively. The same accounts for other columns: Hi(), Lo() and Vo(), for maximum and minimum prices and volume of transactions.
+
+#For the returns, we simply adapt and define which columns will be used, for example: ClCl() will give us the returns using the closing prices from two periods; OpCl() will result in the return from the closing price over the opening price from the same day.
+
+```
+
+```{r returns_periodic}
+
+#Another interesting possibility given by quantmod is the calculation of returns for different periods. For example, it’s possible to calculate the returns by day, week, month, quarter and year, just by using the following commands:
+
+dailyReturn(pbr)
+weeklyReturn(pbr)
+monthlyReturn(pbr)
+quarterlyReturn(pbr)
+yearlyReturn(pbr)
+
+```
+
+```{r return_stats}
+
+summary(pbr_ret)
+sd(pbr_ret)
+
+```
+
+```{r plot_returns}
+
+ggplot(pbr_ret, aes(x = index(pbr_ret), y = pbr_ret)) +
+  geom_line(color = "deepskyblue4") +
+  ggtitle("Petrobras returns series") +
+  xlab("Date") + ylab("Return") +
+  theme(plot.title = element_text(hjust = 0.5)) + scale_x_date(date_labels = "%b %y", date_breaks = "6 months")
+
+
+```
+
+```{r 2017_returns}
+
+pbr_ret17 <- subset(pbr_ret, index(pbr_ret) > "2017-01-01")
+
+ggplot(pbr_ret17, aes(x = index(pbr_ret17), y = pbr_ret17)) +
+  geom_line(color = "deepskyblue4") +
+  ggtitle("Petrobras returns series in 2017") + xlab("Date") + ylab("Return") +
+  theme(plot.title = element_text(hjust = 0.5)) + scale_x_date(date_labels = "%b %y", date_breaks = "1 months")
+
+summary(pbr_ret17)
+
+sd(pbr_ret17)
+
+#We separated in an object all of the returns from 2017, using the function subset()
+
+```
+
+
 
 
 

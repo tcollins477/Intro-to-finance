@@ -1,0 +1,223 @@
+---
+title: "Utilities"
+author: "TJC"
+date: "2023-01-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(BatchGetSymbols) #install.packages('BatchGetSymbols')
+
+```
+
+
+```{r dates}
+
+#use sys.Date to set start & end dates
+first.date <- Sys.Date()-3650
+last.date <- Sys.Date()
+
+
+```
+
+```{r working_directory}
+
+setwd("C:/github X")
+
+```
+
+
+
+```{r excel}
+
+#__________________________________
+#import Excel files. 
+#install.packages('readxl')
+#library("readxl")
+#read_excel("Path where your Excel file is stored\\File Name.xlsx")
+
+#specify the sheet within the workbook
+#library("readxl")
+#read_excel("Path where your Excel file is stored\\File Name.xlsx",sheet = "Your #sheet name") 
+
+
+#__________________________________
+
+#export to Excel
+
+#install.packages('writexl')
+library("writexl")
+write_xlsx(the dataframe name,"path to store the Excel file\\file name.xlsx")
+
+#to run:
+#create a DataFrame
+df <- data.frame(Name = c("Jon", "Bill", "Maria", "Ben", "Tina"),
+                 Age = c(23, 41, 32, 58, 26)
+                 )
+print (df)
+
+#then, write the file
+
+#example
+#library("writexl")
+#df <- data.frame(Name = c("Jon", "Bill", "Maria", "Ben", "Tina"),
+#                 Age = c(23, 41, 32, 58, 26)
+#                 )
+#write_xlsx(df, "C:\\Users\\Ron\\Desktop\\Test\\people.xlsx")
+
+#__________________________________
+
+#to import a text file. 
+
+read.csv("Path where the TXT file is stored\\File Name.txt")
+
+```
+
+```{r stock_data}
+
+library(quantmod)
+price_goog <- getSymbols("GOOG", auto.assign=FALSE, from=first.date, to=last.date)
+head(price_goog)
+
+```
+
+```{r plotting}
+
+# https://www.rpubs.com/AurelliaChristie/time-series-and-stock-analysis
+# Candle stick chart
+#chartSeries(price_goog, name = "GOOG Price ")
+
+#__________________________________
+
+# Take only the closing price
+closing_pr <- Cl(to.monthly(price_goog))
+
+# Decompose it
+#dc <- decompose(as.ts(closing_pr, start=c(2022,1)))
+#plot(dc)
+
+#__________________________________
+#Interactive Plot
+
+library(highcharter)
+
+highchart(type="stock") %>% 
+  hc_add_series(price_bbri) %>% 
+  hc_add_series(SMA(na.omit(Cl(price_goog)),n=50),name="SMA(50)") %>% 
+  hc_add_series(SMA(na.omit(Cl(price_goog)),n=200),name="SMA(200)") %>% 
+  hc_title(text="<b>GOOG Price Candle Stick Chart 2014-2019</b>")
+
+
+
+
+```
+
+```{r}
+library(quantmod)
+price_bbri <- getSymbols("BBRI.JK", auto.assign=FALSE, from="2014-01-01", to="2019-12-31")
+head(price_bbri)
+
+# Candle stick chart
+chartSeries(price_bbri, name = "BBRI Price 2014-2019")
+
+# Take only the closing price
+closing_pr <- Cl(to.monthly(price_bbri))
+
+# Decompose it
+dc <- decompose(as.ts(closing_pr, start=c(2014,1)))
+plot(dc)
+
+# Seasonal component 
+dc$seasonal
+
+library(highcharter)
+highchart(type="stock") %>% 
+  hc_add_series(price_bbri) %>% 
+  hc_add_series(SMA(na.omit(Cl(price_bbri)),n=50),name="SMA(50)") %>% 
+  hc_add_series(SMA(na.omit(Cl(price_bbri)),n=200),name="SMA(200)") %>% 
+  hc_title(text="<b>BBRI Price Candle Stick Chart 2014-2019</b>")
+
+# Fetch BBNI, BMRI, and IHSG stock prices
+price_bbni <- getSymbols("BBNI.JK",auto.assign=FALSE,from="2014-01-01",to="2019-12-31")
+price_bmri <- getSymbols("BMRI.JK",auto.assign=FALSE,from="2014-01-01",to="2019-12-31")
+price_ihsg <- getSymbols("^JKSE",auto.assign=FALSE,from="2014-01-01",to="2019-12-31")
+
+# Compare the stock prices
+highchart(type="stock") %>% 
+  hc_add_series(Cl(price_bbri), name="BBRI") %>% 
+  hc_add_series(Cl(price_bbni), name="BBNI") %>% 
+  hc_add_series(Cl(price_bmri), name="BMRI") %>% 
+  hc_add_series(Cl(price_ihsg), name="IHSG") %>% 
+  hc_title(text="<b>BBRI vs BBNI vs BMRI vs IHSG Closing Price</b>")
+
+# Number of period we want to forecast
+n <- 100
+
+# Splitting the data
+train <- head(Cl(price_bbri), length(Cl(price_bbri))-n)
+test <- tail(Cl(price_bbri), n)
+
+library(forecast)
+
+# Forecast the data
+fc_na <- naive(train, h=n)
+
+# Plot the result
+autoplot(fc_na) +
+  autolayer(ts(test, start=length(train)), series = "Test Data")
+
+# Create the Model
+model_non <- auto.arima(train, seasonal=FALSE)
+
+# Forecast n periods of the data
+fc_non <- forecast(model_non, h=n)
+
+# Plot the result
+autoplot(fc_non)+
+  autolayer(ts(test, start= length(train)), series="Test Data")
+
+# Create the Model
+model_s <- auto.arima(train)
+
+# Forecast n periods of the data
+fc_s <- forecast(model_s, h=n)
+
+# Plot the result
+autoplot(fc_s)+
+  autolayer(ts(test, start= length(train)), series="Test Data")
+
+checkresiduals(fc_na)
+
+checkresiduals(fc_non)
+
+```
+
+install.packages("xlsx")             # Install xlsx R package
+library("xlsx")    
+
+xlsx::write.xlsx(iris,      # Write example Excel xlsx file
+           "C:/github X/iris.xlsx",
+           row.names = FALSE)
+
+
+
+```{r}
+# https://statisticsglobe.com/r-read-excel-file-xlsx-xls
+
+data("iris")                       # Load iris data to RStudio
+#head(iris)                         # Print first 6 rows of iris
+
+install.packages("readxl")           # Install readxl R package
+library("readxl")                    # Load readxl R package to RStudio
+
+data2 <- readxl::read_excel("C:/github X/iris.xlsx")  # Read xlsx file with read_excel
+
+
+
+
+```
+
+
+
