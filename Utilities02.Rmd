@@ -8,29 +8,27 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-#working directory
-setwd('C:/Users/tcoll/OneDrive/Github/Intro to Finance')     #set working directory
-
-getwd()                         #show working directory
-
 ```
 
 ```{r libraries}
 
-#install.packages("xlsx")
+#read excel file into r
+#install.packages(readxl)
+library(readxl)
 
+#write to excel 
+#install.packages("writexl")
+library(writexl)
 
-library("xlsx")
+#get stock / commodity price data
+library(quantmod)
 
-#create a dataframe df
+#install.packages("tidyquant")
+library(tidyquant)      #tidyquant includes quantmod
 
-x<-rnorm(20)
-y<-rnorm(20)
-z<-rnorm(20)
-df<-data.frame(x,y,z)
-df
-
-write.xlsx(df, file="ExcelExport.xlsx", sheetName = "Sheet1")
+#plotting
+library(ggplot2)
+library(gridExtra) # grid.arrange
 
 ```
 
@@ -38,9 +36,185 @@ write.xlsx(df, file="ExcelExport.xlsx", sheetName = "Sheet1")
 
 #use sys.Date to set start & end dates
 
-start.date <- Sys.Date()-365
-end.date <- Sys.Date()
+date.start <- Sys.Date()-60
+date.end <- Sys.Date()
 
+
+```
+
+```{r working_directory}
+
+#working directory
+setwd('C:/Users/tcoll/OneDrive/Github/Intro to Finance')     #set working directory
+
+getwd()                         #show working directory
+
+```
+
+```{r excel}
+
+#read excel file into r
+#install.packages(readxl)
+library(readxl)
+
+read_excel("iris.xlsx") 
+
+#--------------------------------------------------
+
+#write to excel 
+#install.packages("writexl")
+library(writexl)
+write_xlsx(iris, "iris.xlsx")
+
+```
+
+```{r stock_data}
+
+library(quantmod)
+goog_price <- getSymbols("GOOG", auto.assign=FALSE, from=date.start, to=date.end)
+head(goog_price)
+
+# Typically use previous value for NA
+no.na <- which(is.na(goog_price[,6]))      # no for NA
+goog_price[no.na,6] <- goog_price[no.na-1,6]
+ 
+#-------------------------------------
+
+#commodity
+#price_CLH23 <- getSymbols("CLH23.NYM", auto.assign=FALSE, from=date.start, to=date.end)
+#head(price_CLH23)
+
+# Typically use previous value for NA
+#no.na <- which(is.na(price_CLH23[,6]))      # no for NA
+#price_CLH23[no.na,6] <- price_CLH23[no.na-1,6]
+ 
+#-------------------------------------
+
+#get attributes of the price data element
+#class(goog_price)
+#return is "xts" "zoo"      xts is extensible time series
+
+```
+
+```{r stock_data_01}
+
+#https://www.r-bloggers.com/2021/05/retrieving-stock-price-using-r/
+
+library(ggplot2)
+library(gridExtra) # grid.arrange
+
+#Setup
+#graphics.off()
+#rm(list=ls())
+
+# Only stock price
+goog_Close <- goog_price[,6]
+#clh23_Close <- price_CLH23[,6]
+
+# log return using adjusted stock price
+goog_rtn <- diff(log(goog_price),1)
+
+ 
+```
+
+```{r stock_data_02}
+
+#https://www.codingfinance.com/post/2018-03-27-download-price/
+#getting stock data using tidyquant
+library(tidyquant)
+
+#download prices for a symbol
+#this method assigns the object name as the ticker (auto.assign - TRUE)
+options("getSymbols.warning4.0"=FALSE)
+options("getSymbols.yahoo.warning"=FALSE)
+# Downloading Apple price using quantmod
+
+getSymbols("AAPL", from = '2021-01-01',
+           to = "2022-03-01",warnings = FALSE,
+           auto.assign = TRUE)
+#head(AAPL)
+#class(AAPL)
+
+chart_Series(AAPL)
+
+#zoom in to a certain date range
+
+chart_Series(AAPL['2021-12/2022-03'])   #date range specified
+
+#to get data for several tickers
+tickers = c("IBM", "NFLX", "AMZN", "K", "F")
+
+getSymbols(tickers,
+           from = date.start,
+           to = date.end)
+
+prices <- map(tickers,function(x) Ad(get(x)))
+prices <- reduce(prices,merge)
+colnames(prices) <- tickers
+
+```
+
+```{r stock_data_03}
+
+#https://www.codingfinance.com/post/2018-03-27-download-price/
+#uses tidyquant
+library(tidyquant)
+#install.packages("tidyverse")
+#library(tidyverse)
+#install.packages(dplyr)
+library(dplyr)
+#install.packages("ggplot2")
+library(ggplot2)
+library(quantmod)
+
+gs <- tq_get('GS',
+               from = date.start,
+               to = date.end,
+               get = "stock.prices")
+
+#head(GS)
+#class(GS) #the object is a tibble - not a tsx
+
+#gs %>%
+#  ggplot(aes(x = date, y = adjusted)) +
+#  geom_line() +
+#  theme_classic() +
+#  labs(x = 'Date',
+#       y = "Adjusted Price",
+#       title = "GS price chart") +
+#  scale_y_continuous(breaks = seq(0,300,10))
+
+#get data for multiple tickers
+tickers = c("AAPL", "NFLX", "AMZN", "K", "O")
+
+prices <- tq_get(tickers,
+                 from = date.start,
+                 to = date.end,
+                 get = "stock.prices")
+
+#head(prices)
+
+#the tibble data stacks the symbols on top of each other
+#the data has to be sliced to see the first row for each ticker
+prices %>%
+  group_by(symbol) %>%
+  slice_head(n=1)
+
+#chart the time series of all the prices
+prices %>%
+  ggplot(aes(x = date, y = adjusted, color = symbol)) +
+  geom_line()
+#this chart needs to be scaled for the different price levels
+prices %>%
+  ggplot(aes(x = date, y = adjusted, color = symbol)) +
+  geom_line() +
+  facet_wrap(~symbol,scales = 'free_y') +
+  theme_classic() +
+  labs(x = 'Date',
+       y = "Adjusted Price",
+       title = "Price Chart") +
+  scale_x_date(date_breaks = "month",
+               date_labels = "%b\n%y")
 
 ```
 
