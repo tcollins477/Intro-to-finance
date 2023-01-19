@@ -66,6 +66,14 @@ read_excel("iris.xlsx")
 #install.packages("writexl")
 library(writexl)
 write_xlsx(iris, "iris.xlsx")
+write_xlsx(aapl_prices,"aapl.xlsx")
+
+#--------------------------------------------------
+#example
+#read ticker list - crude oil
+
+CL_tickers <- read_excel("Tickers.xlsx","Tickers", col_types = NULL, range = "A1:A12", trim_ws = TRUE)
+
 
 ```
 
@@ -82,8 +90,8 @@ goog_price[no.na,6] <- goog_price[no.na-1,6]
 #-------------------------------------
 
 #commodity
-#price_CLH23 <- getSymbols("CLH23.NYM", auto.assign=FALSE, from=date.start, to=date.end)
-#head(price_CLH23)
+price_CLH23 <- getSymbols("CLH23.NYM", auto.assign=FALSE, from=date.start, to=date.end)
+head(price_CLH23)
 
 # Typically use previous value for NA
 #no.na <- which(is.na(price_CLH23[,6]))      # no for NA
@@ -216,6 +224,127 @@ prices %>%
        title = "Price Chart") +
   scale_x_date(date_breaks = "month",
                date_labels = "%b\n%y")
+
+```
+
+```{r index_data}
+
+#library(tidyquant)
+
+#https://business-science.github.io/tidyquant/articles/TQ01-core-functions-in-tidyquant.html
+
+#list of indexes
+tq_index_options()
+
+#get index constituents and descriptive info
+tq_index("SP500")
+
+#get quantitative data
+#data sources are:
+  #Yahoo Finance - Daily stock data
+  #FRED - Economic data
+  #Quandl - Economic, Energy, & Financial Data API
+  #Tiingo - Financial API with sub-daily stock data and crypto-currency
+  #Alpha Vantage - Financial API with sub-daily, ForEx, and crypto-currency data
+  #Bloomberg - Financial API. Paid account is required.
+
+#see full list
+tq_get_options()
+
+#yahoo finance stock data (tibble) - date format is "YYYY-MM-DD" 
+aapl_prices  <- tq_get("AAPL", get = "stock.prices", from = date.start)
+aapl_prices 
+
+#yahoo Japan stock prices - get = "stock.prices.japan"
+#x8411T <- tq_get("8411.T", get = "stock.prices.japan", from = "2022-01-01", to  = "2022-12-31")
+
+#---------------------------------------------------------
+
+#FRED Economic Data
+#data categories: https://fred.stlouisfed.org/categories
+#WTI Crude Oil Prices
+wti_price_usd <- tq_get("DCOILWTICO", get = "economic.data")
+wti_price_usd 
+
+#---------------------------------------------------------
+
+#Tiingo API
+#https://www.tiingo.com/
+#The Tiingo API is a free source for stock prices, cryptocurrencies, and intraday feeds from the IEX (Investors Exchange). This can serve as an alternate source of data to Yahoo! Finance
+
+library(tidyquant)
+#install.packages("tidyverse")
+library(tidyverse)
+
+#authentication
+tiingo_api_key('d67ad8ac8e8fa4fdba7cdad1edc90c12d64b7241')
+
+#getting Tiingo data
+#tidyquant package provides wrappers to the riingo package (R interface to Tiingo)
+#examples:
+# Tiingo Prices (Free alternative to Yahoo Finance!)
+
+tq_get(c("AAPL", "GOOG"), get = "tiingo", from = "2023-01-01")
+
+# Sub-daily prices from IEX ----
+tq_get(c("AAPL", "GOOG"),
+       get = "tiingo.iex",
+       from   = "2020-01-01",
+       to     = "2020-01-15",
+       resample_frequency = "5min")
+
+# Tiingo Bitcoin in USD ----
+tq_get(c("btcusd"),
+       get    = "tiingo.crypto",
+       from   = "2020-01-01",
+       to     = "2020-01-15",
+       resample_frequency = "5min")
+
+#---------------------------------------------------------
+
+#Alpha Vantage API
+#https://www.alphavantage.co/
+#Authentication
+av_api_key("7YSRPK7OQG6U1G5I")
+
+```
+
+
+```{r batch_get_symbols}
+
+#libraries
+#install.packages('BatchGetSymbols')
+#install.packages('rvest')
+#install.packages('dplyr')
+#install.packages('yfR')
+
+library(BatchGetSymbols)
+library(rvest)
+library(dplyr)
+library("yfR")
+
+# set dates
+first.date <- Sys.Date() - 60
+last.date <- Sys.Date()
+freq.data <- 'daily'
+# set tickers
+tickers <- c('CLH23.NYM','CLK23.NYMM','CLM23.NYM','CLN23.NYM')
+
+l.out <- BatchGetSymbols(tickers = tickers, 
+                         first.date = first.date,
+                         last.date = last.date, 
+                         freq.data = freq.data,
+                         cache.folder = file.path(tempdir(), 
+                                                  'BGS_Cache') ) # cache in tempdir()
+
+print(l.out$df.control)
+
+library(ggplot2)
+ 
+p <- ggplot(l.out$df.tickers, aes(x = ref.date, y = price.close))
+p <- p + geom_line()
+p <- p + facet_wrap(~ticker, scales = 'free_y') 
+print(p)
 
 ```
 
