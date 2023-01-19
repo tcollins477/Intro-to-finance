@@ -12,6 +12,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r libraries}
 
+#install.packages("tidyquant")
+library(tidyquant)      #tidyquant includes quantmod
+
 #read excel file into r
 #install.packages(readxl)
 library(readxl)
@@ -23,8 +26,6 @@ library(writexl)
 #get stock / commodity price data
 library(quantmod)
 
-#install.packages("tidyquant")
-library(tidyquant)      #tidyquant includes quantmod
 
 #plotting
 library(ggplot2)
