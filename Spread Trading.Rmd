@@ -1,0 +1,45 @@
+---
+title: "Spread_Trading"
+author: "TJC"
+date: "2023-01-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#libraries
+library(quantmod)
+install.packages("egcm")
+
+```
+
+```{r spread_trading}
+
+#https://palomar.home.ece.ust.hk/MAFS5310_lectures/Rsession_pairs_trading_with_R.html
+#Pairs Trading with R
+
+#SPY vs IVV
+SPY_prices <- Ad(getSymbols("SPY", from = "2013-01-01", to = "2013-12-31", auto.assign = FALSE))
+IVV_prices <- Ad(getSymbols("IVV", from = "2013-01-01", to = "2013-12-31", auto.assign = FALSE))
+plot(cbind(SPY_prices, IVV_prices), legend.loc = "topleft", main = "ETF prices")
+
+#GLD vs IAU
+GLD_prices <- Ad(getSymbols("GLD", from = "2013-01-01", to = "2013-12-31", auto.assign = FALSE))
+IAU_prices <- Ad(getSymbols("IAU", from = "2013-01-01", to = "2013-12-31", auto.assign = FALSE))
+plot(cbind(GLD_prices, IAU_prices), legend.loc = "topright", main = "ETF prices")
+
+plot(cbind(GLD_prices/as.numeric(GLD_prices[1]), IAU_prices/as.numeric(IAU_prices[1])), 
+     legend.loc = "topright", main = "ETF normalized prices")
+
+plot(log(cbind(GLD_prices, IAU_prices)), legend.loc = "topleft", main = "ETF log-prices")
+
+```
+
+
+
+
+
+
+
+

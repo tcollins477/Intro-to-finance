@@ -37,7 +37,7 @@ library(gridExtra) # grid.arrange
 
 #use sys.Date to set start & end dates
 
-date.start <- Sys.Date()-60
+date.start <- Sys.Date()-90
 date.end <- Sys.Date()
 
 
@@ -312,6 +312,8 @@ av_api_key("7YSRPK7OQG6U1G5I")
 
 ```{r batch_get_symbols}
 
+#https://cran.r-project.org/web/packages/BatchGetSymbols/vignettes/BatchGetSymbols-vignette.html
+
 #libraries
 #install.packages('BatchGetSymbols')
 #install.packages('rvest')
@@ -324,11 +326,13 @@ library(dplyr)
 library("yfR")
 
 # set dates
-first.date <- Sys.Date() - 60
+first.date <- Sys.Date() - 90
 last.date <- Sys.Date()
 freq.data <- 'daily'
 # set tickers
-tickers <- c('CLH23.NYM','CLK23.NYMM','CLM23.NYM','CLN23.NYM')
+tickers <- c('CLH23.NYM','CLJ23.NYM','CLK23.NYM','CLM23.NYM','CLN23.NYM',
+             'CLQ23.NYM','CLU23.NYM')   #creates a vector wsymbols
+#tickers <- c(tickers_csv)
 
 l.out <- BatchGetSymbols(tickers = tickers, 
                          first.date = first.date,
@@ -346,7 +350,32 @@ p <- p + geom_line()
 p <- p + facet_wrap(~ticker, scales = 'free_y') 
 print(p)
 
+l.out %>% data.frame      #convert tibble to data.frame
+CL_price <- data.frame()
+print(CL_price)
+#rm(CL_price)              #delete df
+
 ```
 
+```{r read_csv}
+
+#use sys.Date to set start & end dates
+date.start <- Sys.Date()-90
+date.end <- Sys.Date()
+
+#working directory
+setwd('C:/Users/tcoll/OneDrive/Github/Intro to Finance')      #set working directory
+#getwd()                                                      #show working directory
+
+#read csv file with tickers
+tickers_csv <- read.csv("tickers.csv",header = TRUE)
+  #print(nrow(tickers_csv))                 #print number of rows
+  #print (ncol(tickers_csv))                #print number of columns
+  #print(tickers_csv)                       
+
+
+
+
+```
 
 
