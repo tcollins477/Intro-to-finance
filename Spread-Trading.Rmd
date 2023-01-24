@@ -1,0 +1,451 @@
+---
+title: "Spread_Trading"
+author: "TJC"
+date: "2023-01-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#libraries
+library(quantmod)
+
+#could not get this package to install. files are in github project directory
+#install.packages("egcm")
+
+```
+
+```{r spread_trading}
+
+#https://palomar.home.ece.ust.hk/MAFS5310_lectures/Rsession_pairs_trading_with_R.html
+#Pairs Trading with R
+
+#SPY vs IVV
+SPY_prices <- Ad(getSymbols("SPY", from = "2013-01-01", to = "2013-12-31", auto.assign = FALSE))
+IVV_prices <- Ad(getSymbols("IVV", from = "2013-01-01", to = "2013-12-31", auto.assign = FALSE))
+plot(cbind(SPY_prices, IVV_prices), legend.loc = "topleft", main = "ETF prices")
+
+#GLD vs IAU
+GLD_prices <- Ad(getSymbols("GLD", from = "2013-01-01", to = "2013-12-31", auto.assign = FALSE))
+IAU_prices <- Ad(getSymbols("IAU", from = "2013-01-01", to = "2013-12-31", auto.assign = FALSE))
+plot(cbind(GLD_prices, IAU_prices), legend.loc = "topright", main = "ETF prices")
+
+plot(cbind(GLD_prices/as.numeric(GLD_prices[1]), IAU_prices/as.numeric(IAU_prices[1])), 
+     legend.loc = "topright", main = "ETF normalized prices")
+
+plot(log(cbind(GLD_prices, IAU_prices)), legend.loc = "topleft", main = "ETF log-prices")
+
+```
+
+
+```{r pairs_trading01}
+
+#https://www.r-bloggers.com/2021/01/example-of-pairs-trading/
+
+
+##libraries
+#install.packages('tidyverse')
+#install.packages('tseries')
+#install.packages('quantmod')
+
+library(tidyverse)
+library(tseries)
+library(quantmod)
+
+
+#get price data
+mySymbols <- c('GOOGL', 'TSLA', 'META', 'AMZN', 'AAPL', 'MSFT', 'VOD',  'ADBE', 'NVDA', 'CRM',
+               'EBAY', 'YNDX', 'TRIP', 'NFLX', 'DBX', 'ETSY', 'PYPL','EA', 'BIDU', 'TMUS',
+               'SPLK', 'MD', 'OKTA', 'MDB', 'ZM', 'INTC', 'GT', 'SBUX', 'WIX', 'QQQ')
+myStocks <-lapply(mySymbols, function(x) {getSymbols(x, 
+                                                             from = "2020-01-01", 
+                                                             to = "2021-01-03",
+                                                             periodicity = "daily",
+                                                             auto.assign=FALSE)} )
+names(myStocks)<-mySymbols
+closePrices <- lapply(myStocks, Cl)
+closePrices <- do.call(merge, closePrices)
+names(closePrices)<-sub("\\.Close", "", names(closePrices))
+head(closePrices)
+
+
+```
+
+
+```{r costruct_pairs}
+#continuation of pairs_trading01
+
+#The simplest method to define potentially co-integrated pairs is the computation of the correlation of stock prices considering around 220 daily closing prices. A widely used method is the ‘distance method’ where the co-movement in a pair is measured by what is known as the distance or the sum of squared differences between the two normalized price series. Finally, a rational method is to consider the logarithm of the stock prices and then to compute the correlation of them.
+
+#Split the data into train and test datasets. As a train dataset, we consider the first 220 observations and as a test dataset the remaining last 32 observations. These numbers (220 &32 have to be addressed)
+#We take the logarithm of the closing prices.
+
+# train
+train<-log(closePrices[1:220])
+# test
+test<-log(closePrices[221:252])
+
+# get the correlation of each pair
+left_side<-NULL
+right_side<-NULL
+correlation<-NULL
+beta<-NULL
+pvalue<-NULL
+
+for (i in 1:length(mySymbols)) {
+  for (j in 1:length(mySymbols)) {
+    
+    if (i>j) {
+      left_side<-c(left_side, mySymbols[i])
+      right_side<-c(right_side, mySymbols[j])
+      correlation<-c(correlation, cor(train[,mySymbols[i]], train[,mySymbols[j]]))
+      
+      # linear regression withoout intercept
+      m<-lm(train[,mySymbols[i]]~train[,mySymbols[j]]-1)
+      beta<-c(beta, as.numeric(coef(m)[1]))
+      
+      # get the mispricings of the spread
+      sprd<-residuals(m)
+      
+      # adf test
+      pvalue<-c(pvalue, adf.test(sprd, alternative="stationary", k=0)$p.value)
+      
+    }
+  }
+  
+}
+
+df<-data.frame(left_side, right_side, correlation, beta, pvalue)
+mypairs<-df%>%filter(pvalue<=0.05, correlation>0.90)%>%arrange(-correlation)
+mypairs
+
+
+```
+
+```{r}
+#continuation of pairs_trading01
+
+myspread<-train[,"NFLX"]-0.7739680*train[,"AMZN"]
+plot(myspread, main = "NFLX vs AMZN")
+
+myspread<-test[,"NFLX"]-0.7739680*test[,"AMZN"]
+plot(myspread, main = "NFLX vs AMZN")
+
+```
+
+
+```{r pairs_trading02}
+
+#https://rpubs.com/Jodia/773205
+
+#section 1 - libraries
+library(quantmod)
+library(ggplot2)
+library(scales)
+
+
+#section 2 - functions we need
+#Beta Coefficient
+run_reg <- function(dF){
+  return(coef(lm(y~x-1, data =as.data.frame(dF))))
+}
+
+#Rolling Beta
+rolling_beta <- function(z, width){
+  rollapply(z, width = width,FUN =run_reg,
+            by.column = F, align = 'right')
+}
+
+#Equity Curve
+#From this funciton, we’d like to find the buy and sell signals in our data and get the returns curve.
+compute_equity_curve <- function(qty,price){
+  cash_buy <- ifelse(sign(qty)==1,qty *price,0)
+  cash_sell <- ifelse(sign(qty)==-1,-qty *price,0)
+  position <- cumsum(qty)
+  cumulative_buy <- cumsum(cash_buy)
+  cumulative_sell <- cumsum(cash_sell)
+  equity <- cumulative_sell - cumulative_buy + position * price
+  return(equity)
+  }
+
+#Spread
+#Function to calculate the spread.
+calculate_spread <- function(x , y ,beta){
+return(y- beta * x)
+}
+
+#Beta and Level
+#Function to calculate the beta and level.
+calculate_beta_and_level <- function(x,y,start_date,end_date)
+{
+require(xts)
+  
+time_range <- paste(start_date, "::",end_date, sep = "")
+x <- x[time_range]
+y <- y[time_range]
+
+dx <- diff(x[time_range])
+dy <- diff(y[time_range])
+r <- prcomp(~ dx + dy)
+
+beta <- r$rotation[2,1] / r$rotation[1,1]
+spread <- calculate_spread(x,y,beta)
+names(spread) <- 'spread'
+level <- mean(spread, na.rm = TRUE)
+
+outL <- list()
+outL$spread <- spread
+outL$beta <- beta
+outL$level <- level
+return(outL)
+}
+
+
+
+```
+
+```{r pairs_trade_analysis} 
+#continuation of pairs_trading02
+
+#section 3 - pairs trading
+#inputs:
+  #start: start date
+  #end: end date
+  #stock1: stock1
+  #stock2: stock2
+  #out_range: out-of-sample time range
+
+start <- "2022-01-01"
+end <- "2023-01-01"
+stock1 <- "GOOG"
+stock2 <- "AAPL"
+
+pair_trading <-  function(start ,end , stock1, stock2, out_range){
+  start = as.Date(start)
+  end =  as.Date(end)
+  stock1 = getSymbols(stock1,auto.assign = F,adjust =T,
+                      f=start , t=end+out_range)
+  stock2 = getSymbols(stock2,auto.assign = F,adjust =T,
+                      f=start , t=end+out_range)
+  range1 <- paste(as.Date(start),'::',
+                  as.Date(end),
+                  sep = '')
+  x <- stock1[range1, 6]
+  y <- stock2[range1, 6]
+  
+  results <- calculate_beta_and_level(x,y,start,end)
+  results$beta
+  results$level
+
+  
+  Spread <- ggplot(data=results$spread,
+                aes(x = Index,y=results$spread))+
+    geom_line(colour="red")+
+    labs(title =  'Spread',
+         y="spread value",
+         x="Time",
+         caption= "Source:yahoo finance")+
+    scale_x_date(labels=date_format("%y/%m/%d"))
+  range <- paste(start,'::',
+                 end,
+                 sep = '')
+  # our stock pair
+  x <- stock1[range,6]
+  y <- stock2[range,6]
+  
+  dF <- cbind(x,y)
+  names(dF) <- c('x','y')
+  
+  betas <- rolling_beta(diff(dF),10)
+  betas[1:9] <- 0
+  data <- merge(betas ,dF)
+  data$spread <- data$y - betas * data$x
+  
+  
+  returns <- diff(dF) / dF
+  return_beta <- rolling_beta(returns, 10)
+  data$spreadR <- diff(data$y) / data$y-return_beta*diff(data$x) / data$x
+  
+  tail(data)
+  threshold <- sd(data$spread , na.rm =T)
+  
+  In_Sample_Spread <- ggplot(data = data,
+                    aes(x = Index,y=data$spread))+
+    geom_line(colour="red")+
+    labs(title =  'spread (in-sample)',
+         y="Price",
+         x="Time",
+         caption= "Source:yahoo finance")+
+    scale_x_date(labels=date_format("%y/%m/%d"))+
+    geom_hline(yintercept=mean(data$spread , na.rm =T)+threshold, linetype="dashed",     color = "purple")+
+    geom_hline(yintercept=mean(data$spread , na.rm =T)-threshold, linetype="dashed",     color = "purple")
+  
+  # construct the out of sample spread 
+  # keep the same 10 day rolling window
+  window_length <- 10
+  
+  # time range
+  range2 <- paste(as.Date(end),'::',
+                  (as.Date(end)+out_range),
+                  sep = '')
+ 
+  # our stock pair
+  x <- stock1[range2,6]
+  y <- stock2[range2,6]
+  
+  # bind these together into a matrix
+  dF <- cbind(x,y)
+  names(dF) <- c('x','y')
+  
+  # calculate the out of sample rolling beta
+  beta_out_of_sample <- rolling_beta(diff(dF) , 10)
+  
+  # buy and sell threshold
+  data_out <- merge(beta_out_of_sample,dF)
+  # generate sell and buy signals
+  data_out$spread <- data_out$y-beta_out_of_sample * data_out$x
+  buys <- ifelse(data_out$spread > mean(data_out$spread , na.rm =T)+threshold,1,0)
+  sells <- ifelse(data_out$spread < mean(data_out$spread , na.rm =T)-threshold,-1,0)
+  data_out$signal <- buys + sells
+  
+  # plot out of sample spread
+  Out_of_Sample_Spread <- ggplot(data = data_out,
+                                 aes(x = Index,y=data_out$spread))+
+    geom_line(colour="blue")+
+    labs(title =  'stock1 vs. stock2 spread (out-of-sample)',
+         y="Spread",
+         x="Time",
+         caption= "Source:yahoo finance")+
+    scale_x_date(labels=date_format("%m/%d"))+  
+    geom_hline(yintercept=mean(data_out$spread , na.rm =T)+threshold,   
+               linetype="dashed", color = "black")+
+    geom_hline(yintercept=mean(data_out$spread , na.rm =T)-threshold,
+               linetype="dashed", color = "black")+
+    geom_point(data=data_out$spread[data_out$signal==1],
+               aes(x=Index,y=data_out$spread[data_out$signal==1]),
+               colour="red")+
+    geom_point(data=data_out$spread[data_out$signal==-1],
+               aes(x=Index,y=data_out$spread[data_out$signal==-1]),
+               colour="green")
+  
+  point_type <- rep(NA, nrow(data_out))
+  buy_index <- which(data_out$signal==1)
+  sell_index <- which(data_out$signal==-1)
+  data_out[data_out$signal==1]
+  data_out[data_out$signal==-1]
+  point_type[buy_index] <- 20
+  point_type[sell_index] <- 20
+  
+  
+  num_of_buy_signals <- sum(buys,na.rm=T)
+  num_of_sell_signals <- sum(abs(sells), na.rm=T)
+  
+  prev_x_qty <- 0
+  position <- 0
+  trade_size <- 100
+  signal <- as.numeric(data_out$signal)
+  signal[is.na(signal)] <- 0
+  beta <- as.numeric(data_out$beta_out_of_sample)
+  
+  qty_x <- rep(0,length(signal))
+  qty_y <- rep(0,length(signal))
+  
+  ################# print the equity curve
+  for(i in 1:length(signal)){
+    if(signal[i]==1 && position==0){
+      # buy the spread
+      prev_x_qty <- round(beta[i]*trade_size)
+      qty_x[i] <-  -prev_x_qty
+      qty_y[i] <- trade_size
+      position <- 1
+    }
+    if(signal[i]==-1 && position==0){
+      #sell the spread initially
+      prev_x_qty <- round(beta[i]*trade_size)
+      qty_x[i] <- prev_x_qty
+      qty_y[i] <- -trade_size
+      position <- -1
+    }
+    if(signal[i]==1 && position==-1){
+      #we are short the spread and need to buy
+      qty_x[i] <-  -(round(beta[i]*trade_size)+prev_x_qty)
+      prev_x_qty <- round(beta[i]*trade_size)
+      qty_y[i] <- 2 * trade_size
+      position <- 1
+    }
+    if(signal[i]==-1 && position==1){
+      #we are long the spread and need to sell
+      qty_x[i] <-  round(beta[i]*trade_size)+prev_x_qty
+      prev_x_qty <- round(beta[i]*trade_size)
+      qty_y[i] <- -2*trade_size
+      position <- -1
+    }
+  }
+  
+  qty_x[length((qty_x))] <-  -sum(qty_x)
+  qty_y[length((qty_y))] <-  -sum(qty_y)
+  
+  
+  data_out$qty_x <- qty_x
+  data_out$qty_y <- qty_y
+  
+  
+  # add the equity curve columns to the data_out table
+  data_out$equity_curve_x <- compute_equity_curve(data_out$qty_x,
+                                                  data_out$x)
+  data_out$equity_curve_y <- compute_equity_curve(data_out$qty_y,
+                                                  data_out$y)
+  
+  Equity_Curve <- ggplot(data = data_out,
+                         aes(x = Index,y=data_out$equity_curve_y))+
+    geom_line(colour="red")+
+    labs(title ='Equity Curve',
+         y="Spread",
+         x="Time",
+         caption= "Source:yahoo finance")+
+    scale_x_date(labels=date_format("%m/%d"))
+  
+  # return
+  my_list <- list(Spread , In_Sample_Spread, Out_of_Sample_Spread,Equity_Curve,tail(data_out))
+  return(my_list)
+}
+
+#the function
+pair_trading('2020-01-01','2020-12-31','2317.TW','2354.TW',100)[[1]]
+
+#author notes:
+### 'getSymbols' currently uses auto.assign=TRUE by default, but will
+## use auto.assign=FALSE in 0.5-0. You will still be able to use
+## 'loadSymbols' to automatically load data. getOption("getSymbols.env")
+## and getOption("getSymbols.auto.assign") will still be checked for
+## alternate defaults.
+## 
+## This message is shown once per session and may be disabled by setting 
+## options("getSymbols.warning4.0"=FALSE). See ?getSymbols for details.
+
+## Don't know how to automatically pick scale for object of type xts/zoo. Defaulting to continuous.
+
+#In-Sample Spread
+pair_trading('2020-01-01','2020-12-31','2317.TW','2354.TW',100)[[2]]
+## Don't know how to automatically pick scale for object of type xts/zoo. Defaulting to continuous.
+
+#Out-of-Sample Spread
+#The red dots are the selling points ,and greens for buying points.
+pair_trading('2020-01-01','2020-12-31','2317.TW','2354.TW',100)[[3]]
+## Don't know how to automatically pick scale for object of type xts/zoo. Defaulting to continuous.
+## Warning: Removed 9 row(s) containing missing values (geom_path).
+
+#Equity Curve
+pair_trading('2020-01-01','2020-12-31','2317.TW','2354.TW',100)[[4]]
+## Don't know how to automatically pick scale for object of type xts/zoo. Defaulting to continuous.
+
+#Datas
+pair_trading('2020-01-01','2020-12-31','2317.TW','2354.TW',100)[[5]]
+
+
+
+```
+
+
+

@@ -1,0 +1,518 @@
+---
+title: "Keepers"
+author: "TJC"
+date: "2023-01-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#`echo = FALSE` parameter was added to the code chunk to prevent printing of the R code when knitted
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+```{r libraries}
+
+#install libraries
+#install.packages('BatchGetSymbols')
+
+
+#load libraries
+library(BatchGetSymbols)
+
+
+
+```
+
+```{r working_directory}
+
+#working directory
+setwd('C:/Users/tcoll/OneDrive/Github/Intro to Finance')     #set working directory
+
+getwd()                         #show working directory
+
+```
+
+```{r dates}
+
+#use sys.Date to set start & end dates
+date.start <- Sys.Date()-3650
+date.end <- Sys.Date()
+
+```
+
+
+```{r plot candlestick}
+
+# https://www.rpubs.com/AurelliaChristie/time-series-and-stock-analysis
+# Candlestick chart
+
+#----------------------------------------------------------------
+
+#get historic market data - also see mkt_data chunk
+
+library(quantmod)
+
+price_goog <- getSymbols("GOOG", auto.assign=FALSE, from=date.start, to=date.end)
+head(price_goog)
+price_aapl <- getSymbols("AAPL", auto.assign=FALSE, from=date.start, to=date.end)
+head(price_aapl)
+
+# Take only the closing price - monthly
+closing_pr <- Cl(to.monthly(price_goog))
+
+# Decompose it - not sure what this does
+dc <- decompose(as.ts(closing_pr, start=c(2022,1)))
+plot(dc)
+
+#----------------------------------------------------------------
+
+#Interactive Plot
+
+library(highcharter)
+#candlestick plot / widget
+highchart(type="stock") %>% 
+  hc_add_series(price_goog) %>% 
+  hc_add_series(SMA(na.omit(Cl(price_goog)),n=50),name="SMA(50)") %>% 
+  hc_add_series(SMA(na.omit(Cl(price_goog)),n=200),name="SMA(200)") %>% 
+  hc_title(text="<b>GOOG Price Candle Stick Chart 2014-2019</b>")
+
+```
+
+```{r plot candlestick and compare different stocks}
+
+
+#----------------------------------------------------------------
+#This bit gets hist data for a specified range and builds a line plot + deconstruction
+
+library(quantmod)
+
+price_spy <- getSymbols("SPY", auto.assign=FALSE, from="2014-01-01", to="2019-12-31")
+head(price_spy)
+
+# plot line chart
+chartSeries(price_spy, name = "SPY Price 2014-2019")
+
+# Take only the closing price
+closing_pr <- Cl(to.monthly(price_spy))
+
+# Decompose it
+dc <- decompose(as.ts(closing_pr, start=c(2014,1)))
+plot(dc)
+
+# Seasonal component 
+dc$seasonal
+
+#----------------------------------------------------------------
+#This gets hist data for 3 other tickers and 
+#produces a candlestick & comparison plots
+
+library(highcharter)
+
+#candlestick plot
+highchart(type="stock") %>% 
+  hc_add_series(price_spy) %>% 
+  hc_add_series(SMA(na.omit(Cl(price_spy)),n=50),name="SMA(50)") %>% 
+  hc_add_series(SMA(na.omit(Cl(price_spy)),n=200),name="SMA(200)") %>% 
+  hc_title(text="<b>SPY Price Candle Stick Chart 2014-2019</b>")
+
+# Fetch DIA, QQQ, and IWM stock prices
+price_dia <- getSymbols("DIA",auto.assign=FALSE,from="2014-01-01",to="2019-12-31")
+price_qqq <- getSymbols("QQQ",auto.assign=FALSE,from="2014-01-01",to="2019-12-31")
+price_iwm <- getSymbols("IWM",auto.assign=FALSE,from="2014-01-01",to="2019-12-31")
+
+# Compare the stock prices
+highchart(type="stock") %>% 
+  hc_add_series(Cl(price_spy), name="SPY") %>% 
+  hc_add_series(Cl(price_dia), name="DIA") %>% 
+  hc_add_series(Cl(price_qqq), name="QQQ") %>% 
+  hc_add_series(Cl(price_iwm), name="IWM") %>% 
+  hc_title(text="<b>SPY vs DIA vs QQQ vs IWM Closing Price</b>")
+
+# Number of period we want to forecast
+n <- 100
+
+# Splitting the data
+train <- head(Cl(price_spy), length(Cl(price_spy))-n)
+test <- tail(Cl(price_spy), n)
+
+library(forecast)
+
+# Forecast the data
+fc_na <- naive(train, h=n)
+
+# Plot the result
+autoplot(fc_na) +
+  autolayer(ts(test, start=length(train)), series = "Test Data")
+
+# Create the Model
+model_non <- auto.arima(train, seasonal=FALSE)
+
+# Forecast n periods of the data
+fc_non <- forecast(model_non, h=n)
+
+# Plot the result
+autoplot(fc_non)+
+  autolayer(ts(test, start= length(train)), series="Test Data")
+
+# Create the Model
+model_s <- auto.arima(train)
+
+# Forecast n periods of the data
+fc_s <- forecast(model_s, h=n)
+
+# Plot the result
+autoplot(fc_s)+
+  autolayer(ts(test, start= length(train)), series="Test Data")
+
+checkresiduals(fc_na)
+
+checkresiduals(fc_non)
+
+```
+
+```{r excel}
+
+#----------------------------------------------------------------
+#read an excel file
+
+#working directory
+setwd('C:/Users/tcoll/OneDrive/Github/Intro to Finance')     #set working directory
+
+getwd()                                 #show working directory
+
+# https://statisticsglobe.com/r-read-excel-file-xlsx-xls
+
+data("iris")                            # Load iris data to RStudio
+#head(iris)                             # Print first 6 rows of iris
+
+install.packages("readxl")              # Install readxl R package
+library("readxl")                       # Load readxl R package to RStudio
+
+data2 <- readxl::read_excel('C:/Users/tcoll/OneDrive/Github/Intro to Finance')         # Read xlsx file with read_excel
+
+#----------------------------------------------------------------
+
+#read excel file into r
+#install.packages(readxl)
+library(readxl)
+
+read_excel("iris.xlsx") 
+
+#--------------------------------------------------
+
+#write to excel 
+#install.packages("writexl")
+library(writexl)
+write_xlsx(iris, "iris.xlsx")
+write_xlsx(price_aapl,"aapl.xlsx")
+
+#--------------------------------------------------
+#example
+#read ticker list - crude oil
+
+CL_tickers <- read_excel("Tickers.xlsx","Tickers", col_types = NULL, range = "A1:A12", trim_ws = TRUE)
+
+```
+
+```{r read_csv}
+
+#use sys.Date to set start & end dates
+date.start <- Sys.Date()-90
+date.end <- Sys.Date()
+
+#working directory
+setwd('C:/Users/tcoll/OneDrive/Github/Intro to Finance')      #set working directory
+#getwd()                                                      #show working directory
+
+#read csv file with tickers
+tickers_csv <- read.csv("tickers.csv",header = TRUE)
+  #print(nrow(tickers_csv))                 #print number of rows
+  #print (ncol(tickers_csv))                #print number of columns
+  #print(tickers_csv)                       
+
+```
+
+```{r mkt_data}
+
+#Data00
+library(quantmod)
+goog_price <- getSymbols("GOOG", auto.assign=FALSE, from=date.start, to=date.end)
+head(goog_price)
+
+# Typically use previous value for NA
+no.na <- which(is.na(goog_price[,6]))      # no for NA
+goog_price[no.na,6] <- goog_price[no.na-1,6]
+ 
+#--------------------------------------------------------
+
+#commodity
+price_CLH23 <- getSymbols("CLH23.NYM", auto.assign=FALSE, from=date.start, to=date.end)
+head(price_CLH23)
+
+# Typically use previous value for NA
+#no.na <- which(is.na(price_CLH23[,6]))      # no for NA
+#price_CLH23[no.na,6] <- price_CLH23[no.na-1,6]
+ 
+#--------------------------------------------------------
+
+#get attributes of the price data element
+#class(goog_price)
+#return is "xts" "zoo"      xts is extensible time series
+
+
+#========================================================
+#Data01
+
+#https://www.r-bloggers.com/2021/05/retrieving-stock-price-using-r/
+
+library(ggplot2)
+library(gridExtra) # grid.arrange
+
+#Setup
+#graphics.off()
+#rm(list=ls())
+
+# Only stock price
+goog_Close <- goog_price[,6]
+#clh23_Close <- price_CLH23[,6]
+
+# log return using adjusted stock price
+goog_rtn <- diff(log(goog_price),1)
+
+#========================================================
+#Data02
+
+#https://www.codingfinance.com/post/2018-03-27-download-price/
+#getting stock data using tidyquant
+library(tidyquant)
+
+#download prices for a symbol
+#this method assigns the object name as the ticker (auto.assign - TRUE)
+options("getSymbols.warning4.0"=FALSE)
+options("getSymbols.yahoo.warning"=FALSE)
+# Downloading Apple price using quantmod
+
+getSymbols("AAPL", from = '2021-01-01',
+           to = "2022-03-01",warnings = FALSE,
+           auto.assign = TRUE)
+#head(AAPL)
+#class(AAPL)
+
+chart_Series(AAPL)
+
+#zoom in to a certain date range
+
+chart_Series(AAPL['2021-12/2022-03'])   #date range specified
+
+#to get data for several tickers
+tickers = c("IBM", "NFLX", "AMZN", "K", "F")
+
+getSymbols(tickers,
+           from = date.start,
+           to = date.end)
+
+prices <- map(tickers,function(x) Ad(get(x)))
+prices <- reduce(prices,merge)
+colnames(prices) <- tickers
+
+#========================================================
+#Data03
+
+
+#https://www.codingfinance.com/post/2018-03-27-download-price/
+#uses tidyquant
+library(tidyquant)
+#install.packages("tidyverse")
+#library(tidyverse)
+#install.packages(dplyr)
+library(dplyr)
+#install.packages("ggplot2")
+library(ggplot2)
+library(quantmod)
+
+gs <- tq_get('GS',
+               from = date.start,
+               to = date.end,
+               get = "stock.prices")
+
+#head(GS)
+#class(GS) #the object is a tibble - not a tsx
+
+#gs %>%
+#  ggplot(aes(x = date, y = adjusted)) +
+#  geom_line() +
+#  theme_classic() +
+#  labs(x = 'Date',
+#       y = "Adjusted Price",
+#       title = "GS price chart") +
+#  scale_y_continuous(breaks = seq(0,300,10))
+
+#get data for multiple tickers
+tickers = c("AAPL", "NFLX", "AMZN", "K", "O")
+
+prices <- tq_get(tickers,
+                 from = date.start,
+                 to = date.end,
+                 get = "stock.prices")
+
+#head(prices)
+
+#the tibble data stacks the symbols on top of each other
+#the data has to be sliced to see the first row for each ticker
+prices %>%
+  group_by(symbol) %>%
+  slice_head(n=1)
+
+#chart the time series of all the prices
+prices %>%
+  ggplot(aes(x = date, y = adjusted, color = symbol)) +
+  geom_line()
+#this chart needs to be scaled for the different price levels
+prices %>%
+  ggplot(aes(x = date, y = adjusted, color = symbol)) +
+  geom_line() +
+  facet_wrap(~symbol,scales = 'free_y') +
+  theme_classic() +
+  labs(x = 'Date',
+       y = "Adjusted Price",
+       title = "Price Chart") +
+  scale_x_date(date_breaks = "month",
+               date_labels = "%b\n%y")
+
+#========================================================
+
+
+
+```
+
+```{r batch_get_symbols}
+
+#https://cran.r-project.org/web/packages/BatchGetSymbols/vignettes/BatchGetSymbols-vignette.html
+
+#libraries
+#install.packages('BatchGetSymbols')
+#install.packages('rvest')
+#install.packages('dplyr')
+#install.packages('yfR')
+
+library(BatchGetSymbols)
+library(rvest)
+library(dplyr)
+library("yfR")
+
+# set dates
+first.date <- Sys.Date() - 90
+last.date <- Sys.Date()
+freq.data <- 'daily'
+# set tickers
+tickers <- c('CLH23.NYM','CLJ23.NYM','CLK23.NYM','CLM23.NYM','CLN23.NYM',
+             'CLQ23.NYM','CLU23.NYM')   #creates a vector wsymbols
+#tickers <- c(tickers_csv)
+
+l.out <- BatchGetSymbols(tickers = tickers, 
+                         first.date = first.date,
+                         last.date = last.date, 
+                         freq.data = freq.data,
+                         cache.folder = file.path(tempdir(), 
+                                                  'BGS_Cache') ) # cache in tempdir()
+
+print(l.out$df.control)
+
+library(ggplot2)
+ 
+p <- ggplot(l.out$df.tickers, aes(x = ref.date, y = price.close))
+p <- p + geom_line()
+p <- p + facet_wrap(~ticker, scales = 'free_y') 
+print(p)
+
+l.out %>% data.frame      #convert tibble to data.frame
+CL_price <- data.frame()
+print(CL_price)
+#rm(CL_price)              #delete df
+
+```
+
+```{r index_data}
+
+#library(tidyquant)
+
+#https://business-science.github.io/tidyquant/articles/TQ01-core-functions-in-tidyquant.html
+
+#list of indexes
+tq_index_options()
+
+#get index constituents and descriptive info
+tq_index("SP500")
+
+#get quantitative data
+#data sources are:
+  #Yahoo Finance - Daily stock data
+  #FRED - Economic data
+  #Quandl - Economic, Energy, & Financial Data API
+  #Tiingo - Financial API with sub-daily stock data and crypto-currency
+  #Alpha Vantage - Financial API with sub-daily, ForEx, and crypto-currency data
+  #Bloomberg - Financial API. Paid account is required.
+
+#see full list
+tq_get_options()
+
+#yahoo finance stock data (tibble) - date format is "YYYY-MM-DD" 
+aapl_prices  <- tq_get("AAPL", get = "stock.prices", from = date.start)
+aapl_prices 
+
+#yahoo Japan stock prices - get = "stock.prices.japan"
+#x8411T <- tq_get("8411.T", get = "stock.prices.japan", from = "2022-01-01", to  = "2022-12-31")
+
+#---------------------------------------------------------
+
+#FRED Economic Data
+#data categories: https://fred.stlouisfed.org/categories
+#WTI Crude Oil Prices
+wti_price_usd <- tq_get("DCOILWTICO", get = "economic.data")
+wti_price_usd 
+
+#---------------------------------------------------------
+
+#Tiingo API
+#https://www.tiingo.com/
+#The Tiingo API is a free source for stock prices, cryptocurrencies, and intraday feeds from the IEX (Investors Exchange). This can serve as an alternate source of data to Yahoo! Finance
+
+library(tidyquant)
+#install.packages("tidyverse")
+library(tidyverse)
+
+#authentication
+tiingo_api_key('d67ad8ac8e8fa4fdba7cdad1edc90c12d64b7241')
+
+#getting Tiingo data
+#tidyquant package provides wrappers to the riingo package (R interface to Tiingo)
+#examples:
+# Tiingo Prices (Free alternative to Yahoo Finance!)
+
+tq_get(c("AAPL", "GOOG"), get = "tiingo", from = "2023-01-01")
+
+# Sub-daily prices from IEX ----
+tq_get(c("AAPL", "GOOG"),
+       get = "tiingo.iex",
+       from   = "2020-01-01",
+       to     = "2020-01-15",
+       resample_frequency = "5min")
+
+# Tiingo Bitcoin in USD ----
+tq_get(c("btcusd"),
+       get    = "tiingo.crypto",
+       from   = "2020-01-01",
+       to     = "2020-01-15",
+       resample_frequency = "5min")
+
+#---------------------------------------------------------
+
+#Alpha Vantage API
+#https://www.alphavantage.co/
+#Authentication
+av_api_key("7YSRPK7OQG6U1G5I")
+
+```
+
+
