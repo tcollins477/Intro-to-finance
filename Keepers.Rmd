@@ -15,11 +15,11 @@ knitr::opts_chunk$set(echo = TRUE)
 
 #install libraries
 #install.packages('BatchGetSymbols')
-
+#install.packages('yfR')
 
 #load libraries
 library(BatchGetSymbols)
-
+library(yfR)
 
 
 ```
@@ -186,10 +186,11 @@ getwd()                                 #show working directory
 data("iris")                            # Load iris data to RStudio
 #head(iris)                             # Print first 6 rows of iris
 
-install.packages("readxl")              # Install readxl R package
+#install.packages("readxl")              # Install readxl R package
 library("readxl")                       # Load readxl R package to RStudio
 
-data2 <- readxl::read_excel('C:/Users/tcoll/OneDrive/Github/Intro to Finance')         # Read xlsx file with read_excel
+data1 <- readxl::read_excel('C:/Users/tcoll/OneDrive/Github/Intro to Finance/aapl.xlsx')
+data2 <- readxl::read_excel('C:/Users/tcoll/OneDrive/Github/Intro to Finance/iris.xlsx')         # Read xlsx file with read_excel
 
 #----------------------------------------------------------------
 
@@ -205,7 +206,7 @@ read_excel("iris.xlsx")
 #install.packages("writexl")
 library(writexl)
 write_xlsx(iris, "iris.xlsx")
-write_xlsx(price_aapl,"aapl.xlsx")
+write_xlsx(data1,"aapl.xlsx")
 
 #--------------------------------------------------
 #example
@@ -233,7 +234,7 @@ tickers_csv <- read.csv("tickers.csv",header = TRUE)
 
 ```
 
-```{r mkt_data}
+```{r mkt_data00}
 
 #Data00
 library(quantmod)
@@ -260,8 +261,9 @@ head(price_CLH23)
 #class(goog_price)
 #return is "xts" "zoo"      xts is extensible time series
 
+```
 
-#========================================================
+```{r mkt_data01}
 #Data01
 
 #https://www.r-bloggers.com/2021/05/retrieving-stock-price-using-r/
@@ -281,11 +283,17 @@ goog_Close <- goog_price[,6]
 goog_rtn <- diff(log(goog_price),1)
 
 #========================================================
+```
+
+```{r mkt_data02}
+
 #Data02
 
 #https://www.codingfinance.com/post/2018-03-27-download-price/
 #getting stock data using tidyquant
 library(tidyquant)
+library(purrr)      #install.packages("purrr")
+library(quantmod)
 
 #download prices for a symbol
 #this method assigns the object name as the ticker (auto.assign - TRUE)
@@ -309,16 +317,23 @@ chart_Series(AAPL['2021-12/2022-03'])   #date range specified
 tickers = c("IBM", "NFLX", "AMZN", "K", "F")
 
 getSymbols(tickers,
-           from = date.start,
-           to = date.end)
+           from = "2017-01-01",
+           to = "2017-01-15")
 
 prices <- map(tickers,function(x) Ad(get(x)))
 prices <- reduce(prices,merge)
 colnames(prices) <- tickers
 
-#========================================================
-#Data03
+head(prices)
 
+#========================================================
+```
+
+
+
+```{r mkt_data03}
+
+#Data03
 
 #https://www.codingfinance.com/post/2018-03-27-download-price/
 #uses tidyquant
@@ -380,11 +395,9 @@ prices %>%
   scale_x_date(date_breaks = "month",
                date_labels = "%b\n%y")
 
-#========================================================
-
-
-
 ```
+
+
 
 ```{r batch_get_symbols}
 
