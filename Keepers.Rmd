@@ -251,9 +251,9 @@ goog_price[no.na,6] <- goog_price[no.na-1,6]
 price_CLH23 <- getSymbols("CLH23.NYM", auto.assign=FALSE, from=date.start, to=date.end)
 head(price_CLH23)
 
-# Typically use previous value for NA
-#no.na <- which(is.na(price_CLH23[,6]))      # no for NA
-#price_CLH23[no.na,6] <- price_CLH23[no.na-1,6]
+# Use previous value (adjusted close) for NA
+no.na <- which(is.na(price_CLH23[,6]))      # no for NA
+price_CLH23[no.na,6] <- price_CLH23[no.na-1,6]
  
 #--------------------------------------------------------
 
@@ -292,8 +292,9 @@ goog_rtn <- diff(log(goog_price),1)
 #https://www.codingfinance.com/post/2018-03-27-download-price/
 #getting stock data using tidyquant
 library(tidyquant)
-library(purrr)      #install.packages("purrr")
-library(quantmod)
+#library(quantmod)                      #quantmod library is included in tidyquant
+library(purrr)                          #install.packages("purrr")
+
 
 #download prices for a symbol
 #this method assigns the object name as the ticker (auto.assign - TRUE)
@@ -394,6 +395,49 @@ prices %>%
        title = "Price Chart") +
   scale_x_date(date_breaks = "month",
                date_labels = "%b\n%y")
+
+#=============================================================================
+
+#Commodity prices
+
+#use sys.Date to set start & end dates
+date.start_Cmdty <- Sys.Date()-90
+date.end_Cmdty <- Sys.Date()
+
+
+#Crude Oil
+tickersCL = c("CLJ23.NYM", "CLK23.NYM", "CLM23.NYM", "CLN23.NYM", "CLQ23.NYM", "CLU23.NYM", "CLV23.NYM", "CLX23.NYM", "CLZ23.NYM")
+
+pricesCL <- tq_get(tickersCL,
+                 from = date.start_Cmdty,
+                 to = date.end_Cmdty,
+                 get = "stock.prices")
+
+#head(pricesCL)
+
+#the tibble data stacks the symbols on top of each other
+#the data has to be sliced to see the first row for each ticker
+pricesCL %>%
+  group_by(symbol) %>%
+  slice_head(n=1)
+
+#chart the time series of all the prices
+pricesCL %>%
+  ggplot(aes(x = date, y = adjusted, color = symbol)) +
+  geom_line()
+#this chart needs to be scaled for the different price levels
+pricesCL %>%
+  ggplot(aes(x = date, y = adjusted, color = symbol)) +
+  geom_line() +
+  facet_wrap(~symbol,scales = 'free_y') +
+  theme_classic() +
+  labs(x = 'Date',
+       y = "Adjusted Price",
+       title = "Price Chart") +
+  scale_x_date(date_breaks = "month",
+               date_labels = "%b\n%y")
+
+
 
 ```
 
