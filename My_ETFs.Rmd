@@ -1,0 +1,55 @@
+---
+title: "My ETFs"
+author: "TJC"
+date: "2023-01-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#libraries
+#install.packages('quantmod')
+#install.packages('tidyquant')
+#install.packages('tidyverse')         #tidyverse includes core packages (ggplot2, dplyr, 
+                                        #tidyr, readdr, purrr, tibble, stringr, & forcats
+                                        #see: https://www.tidyverse.org/packages/)
+library(tidyverse)
+library(tidyquant)
+library(quantmod)
+
+#working directory
+setwd('C:/Users/tcoll/OneDrive/Github/Intro to Finance')     #set working directory
+
+getwd()                         #show working directory
+
+
+```
+
+```{r dates}
+
+#use sys.Date to set start & end dates
+date.start <- Sys.Date()-365
+date.end <- Sys.Date()
+
+```
+
+```{r data_mkt}
+
+#get data for multiple tickers
+tickers_ETF = c("PSYK", "PSIL", "KARB", "KRBN")
+
+prices_ETF <- tq_get(tickers_ETF,
+                 from = date.start,
+                 to = date.end,
+                 get = "stock.prices")
+
+head(prices)
+
+```
+
+
+
+
+
+
