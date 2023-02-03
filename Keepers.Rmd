@@ -443,6 +443,7 @@ pricesCL %>%
 
 
 
+
 ```{r batch_get_symbols}
 
 #https://cran.r-project.org/web/packages/BatchGetSymbols/vignettes/BatchGetSymbols-vignette.html

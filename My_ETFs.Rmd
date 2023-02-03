@@ -34,22 +34,106 @@ date.end <- Sys.Date()
 
 ```
 
-```{r data_mkt}
+```{r data_mkt01}
 
 #get data for multiple tickers
-tickers_ETF = c("PSYK", "PSIL", "KARB", "KRBN")
+tickers_ETF = c("PSYK", "PSIL")
 
 prices_ETF <- tq_get(tickers_ETF,
                  from = date.start,
                  to = date.end,
                  get = "stock.prices")
 
-head(prices)
+#head(prices)
+class(tickers_ETF) #the object is a tibble - not a tsx
 
 ```
 
+```{r plot01}
+
+#the tibble data stacks the symbols on top of each other
+#the data has to be sliced to see the first row for each ticker
+prices_ETF %>%
+  group_by(symbol) %>%
+  slice_head(n=1)
+
+#chart the time series of all the prices
+prices_ETF %>%
+  ggplot(aes(x = date, y = adjusted, color = symbol)) +
+  geom_line()
+#this chart needs to be scaled for the different price levels
+prices_ETF %>%
+  ggplot(aes(x = date, y = adjusted, color = symbol)) +
+  geom_line() +
+  facet_wrap(~symbol,scales = 'free_y') +
+  theme_classic() +
+  labs(x = 'Date',
+       y = "Adjusted Price",
+       title = "Price Chart") +
+  scale_x_date(date_breaks = "month",
+               date_labels = "%b\n%y")
+
+```
+
+```{r data_mkt02}
+
+#***** xts data  ***** 
+
+#download prices for a symbol 
+#this method assigns the object name as the ticker (auto.assign - TRUE)
+options("getSymbols.warning4.0"=FALSE)
+options("getSymbols.yahoo.warning"=FALSE)
+# Downloading Apple price using quantmod
+
+getSymbols("PSYK", from = date.start,
+           to = date.end,warnings = FALSE,
+           auto.assign = TRUE)
+#head(PSYK)
+#class(PSYK)
+
+chart_Series(PSYK)
+
+#zoom in to a certain date range
+
+chart_Series(PSYK['2022-12/2023-02'])   #date range specified
+
+#to get data for several tickers
+tickers = c("PSYK", "PSIL", "AMZN", "K", "F")
+
+getSymbols(tickers,
+           from = date.start,
+           to = date.end)
+
+prices <- map(tickers,function(x) Ad(get(x)))
+prices <- reduce(prices,merge)
+colnames(prices) <- tickers
+
+head(prices)
 
 
+```
 
+```{r export_xts2excel}
+
+#write to excel 
+#install.packages("writexl")
+library(writexl)
+write_xlsx(PSYK, "PSYK.xlsx")
+write_xlsx(PSIL, "PSIL.xlsx")
+
+library(xts) 
+library(tidyverse)
+library(purrr)
+#
+#  combine list of xts objects into a single data frame with equity names and dates
+# 
+
+  df_out <- map_dfr(blowup.instances, function(y) data_frame(Name = names(y), Date = index(y), value=as.vector(coredata(y))) )
+#
+#   write as csv flat file
+#
+  write.csv(df_out, file="blowupInstances.csv", row.names = FALSE)
+
+```
 
 

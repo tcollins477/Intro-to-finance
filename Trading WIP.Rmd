@@ -7,6 +7,192 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+This is an attempt to build a pairs trading template. It will utilize various examples found on the specified web pages. Most of the material is stock specific, but the goal is to include commodity futures contracts as well (an updated FCMax program).
+
+Starting with the R for Finance Primer (https://palomar.home.ece.ust.hk/MAFS5310_lectures/Rsession_primer.html)
+
+```{r getting_started}
+
+#Install packages
+#To see the version of a specific package use packageVersion("package_name")
+
+#xts - eXtensible Time Series / an extension to package zoo / see more:https://rdocumentation.org/packages/xts/versions/0.12.2
+library(xts)                  #install.packages("xts")
+#ggplot2 - grammar of graphics / used to create plots, particularly with data frames / see more: https://ggplot2.tidyverse.org/ & online book: https://ggplot2-book.org/
+library(ggplot2)                  #install.packages("ggplot2")
+library(reshape2)                 #install.packages("reshape2") # required for melting the data frame
+
+#Here are some examples of ggplot2 & reshape2 in practice:
+# create data frame with data / this data is random walk 
+df <- data.frame(index   = 1:1000,
+                 series1 = cumsum(rnorm(1000)),
+                 series2 = cumsum(rnorm(1000)),
+                 series3 = cumsum(rnorm(1000)),
+                 series4 = cumsum(rnorm(1000)))
+molten_df <- melt(df, id.vars = "index", measure.vars = c("series1", "series2", "series3", "series4"))
+str(molten_df)
+
+#> 'data.frame':    4000 obs. of  3 variables:
+#>  $ index   : int  1 2 3 4 5 6 7 8 9 10 ...
+#>  $ variable: Factor w/ 4 levels "series1","series2",..: 1 1 1 1 1 1 1 1 1 1 ...
+#>  $ value   : num  -0.254 -1.39 -1.875 -2.435 -1.107 ...
+
+#now plot the data
+ggplot(molten_df, aes(x = index, y = value, col = variable)) + 
+  geom_line() +
+  ggtitle("Random walks")
+
+#another plot of the same data shown individually
+ggplot(molten_df, aes(x = index, y = value, col = variable)) + 
+  geom_line(show.legend = FALSE) +
+  facet_wrap(~ variable) +
+  ggtitle("Random walks")
+
+```
+
+
+Here are some examples using xts:
+```{r using_xts}
+library(xts)
+
+#=====================================================================
+#convert an existing time series data into xts with as.xts():
+data(sample_matrix)  # load some data from package xts
+class(sample_matrix)
+#> [1] "matrix" "array"
+str(sample_matrix)
+#>  num [1:180, 1:4] 50 50.2 50.4 50.4 50.2 ...
+#>  - attr(*, "dimnames")=List of 2
+#>   ..$ : chr [1:180] "2007-01-02" "2007-01-03" "2007-01-04" "2007-01-05" ...
+#>   ..$ : chr [1:4] "Open" "High" "Low" "Close"
+
+matrix_xts <- as.xts(sample_matrix, dateFormat = "Date")
+class(matrix_xts)
+#> [1] "xts" "zoo"
+str(matrix_xts)
+#> An 'xts' object on 2007-01-02/2007-06-30 containing:
+#>   Data: num [1:180, 1:4] 50 50.2 50.4 50.4 50.2 ...
+#>  - attr(*, "dimnames")=List of 2
+#>   ..$ : NULL
+#>   ..$ : chr [1:4] "Open" "High" "Low" "Close"
+#>   Indexed by objects of class: [Date] TZ: UTC
+#>   xts Attributes:  
+#>  NULL
+
+#=====================================================================
+#create new data with the xts constructor xts():
+
+xts(1:10, as.Date("2000-01-01") + 1:10)
+#>            [,1]
+#> 2000-01-02    1
+#> 2000-01-03    2
+#> 2000-01-04    3
+#> 2000-01-05    4
+#> 2000-01-06    5
+#> 2000-01-07    6
+#> 2000-01-08    7
+#> 2000-01-09    8
+#> 2000-01-10    9
+#> 2000-01-11   10
+
+#=====================================================================
+#subsetting xts
+#use date-like strings to extract data based on the time-index / it is possible to subset the object by year, week, days, or even seconds
+#The format must left-specified with respect to the standard ISO:8601 time format “CCYY-MM-DD HH:MM:SS”
+
+#how to extract the entire month of March 2007:
+matrix_xts["2007-03"]
+
+#extract all the data from the beginning through January 7, 2007:
+matrix_xts["/2007-01-07"]  # same as: matrix_xts["::2007-01-07"]
+
+#first and last functions
+first(matrix_xts,"1 week")
+
+#first 3 days of the last week of the data
+first(last(matrix_xts,"1 week"),"3 days")
+
+#It is also possible to directly query and set the index class of an xts object by using the respective functions tclass and tclass<-. Temporary conversion, resulting in a new object with the requested index class, can be accomplished via the convertIndex function
+tclass(matrix_xts)
+#> [1] "Date"
+matrix_xts_POSIX <- convertIndex(matrix_xts,'POSIXct')
+tclass(matrix_xts_POSIX)
+#> [1] "POSIXct" "POSIXt"
+
+#one can also use the traditional indexing for matrices:
+matrix_xts[1:5]  # same as matrix_xts[1:5, ]
+#>                Open     High      Low    Close
+#> 2007-01-02 50.03978 50.11778 49.95041 50.11778
+#> 2007-01-03 50.23050 50.42188 50.23050 50.39767
+#> 2007-01-04 50.42096 50.42096 50.26414 50.33236
+#> 2007-01-05 50.37347 50.37347 50.22103 50.33459
+#> 2007-01-06 50.24433 50.24433 50.11121 50.18112
+matrix_xts[1:5, 4]
+#>               Close
+#> 2007-01-02 50.11778
+#> 2007-01-03 50.39767
+#> 2007-01-04 50.33236
+#> 2007-01-05 50.33459
+#> 2007-01-06 50.18112
+matrix_xts[1:5, "Close"]
+#>               Close
+#> 2007-01-02 50.11778
+#> 2007-01-03 50.39767
+#> 2007-01-04 50.33236
+#> 2007-01-05 50.33459
+#> 2007-01-06 50.18112
+matrix_xts[1:5]$Close
+#>               Close
+#> 2007-01-02 50.11778
+#> 2007-01-03 50.39767
+#> 2007-01-04 50.33236
+#> 2007-01-05 50.33459
+#> 2007-01-06 50.18112
+
+#combine different xts objects into one with multiple columns and properly aligned by the time index with merge() or simply the more standard cbind() (which calls merge()):
+open_close <- cbind(matrix_xts$Open, matrix_xts$Close)
+str(open_close)
+
+#=====================================================================
+#plotting xts
+
+#base R plot
+plot(sample_matrix[, 4], type = "l", main = "Stock prices")
+
+# plot for xts (actually uses plot.xts under the hood)
+plot(matrix_xts$Close, main = "Stock prices")
+
+#ggplot2
+#One can also use the awesome ggplot2 package. Recall that first we need to melt the multivariate xts object with the function ggplot2::fortify():
+
+# first we melt the xts
+molten_df <- fortify(matrix_xts, melt = TRUE)
+str(molten_df)
+#> 'data.frame':    720 obs. of  3 variables:
+#>  $ Index : Date, format: "2007-01-02" "2007-01-03" "2007-01-04" "2007-01-05" ...
+#>  $ Series: Factor w/ 4 levels "Open","High",..: 1 1 1 1 1 1 1 1 1 1 ...
+#>  $ Value : num  50 50.2 50.4 50.4 50.2 ...
+
+# plot
+ggplot(molten_df, aes(x = Index, y = Value, col = Series)) +
+  geom_line()
+
+# configure the plot a bit more
+ggplot(molten_df, aes(x = Index, y = Value, col = Series)) +
+  geom_line() +
+  ggtitle("Stock prices") + xlab(element_blank()) + ylab(element_blank()) + 
+  theme(legend.title = element_blank()) +
+  scale_x_date(date_breaks = "1 month", date_labels = "%b %Y", date_minor_breaks = "1 week")
+
+#ggfortify
+install.packages("ggfortify")
+library(ggfortify)
+autoplot(matrix_xts, facets = FALSE, main = "Stock prices")  # names of molten df: Index, value, plot_group
+
+
 ```
 
 
