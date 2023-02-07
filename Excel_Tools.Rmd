@@ -1,0 +1,61 @@
+---
+title: "ExcelTools"
+author: "TJC"
+date: "2023-02-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+# Data Range
+sdate = as.Date(Sys.Date()-365)
+edate = as.Date(Sys.Date())
+ 
+#str(sdate)
+#edate
+
+```
+
+```{r read excel files, echo=TRUE}
+
+# Data Range
+sdate = as.Date(Sys.Date()-365)
+edate = as.Date(Sys.Date())
+
+#set working directory
+setwd("C:/Users/Tim/OneDrive/Github/Intro to Finance/data")
+getwd()
+
+#to read a csv file: 
+#TickerCL <- read.csv("tickers.csv", header=TRUE, stringsAsFactors=FALSE)
+
+#to read from an xlsx file:
+library(readxl)                         #install.packages("readxl")
+library(dplyr)                          #install.packages("dplyr")
+library(quantmod)                       #install.packages("quantmod")
+
+#import Excel file into R
+tickersCL <- read_excel('Tickers.xlsx', 'TickersCL', col_names=TRUE)
+tickersCL <- as_tibble(tickersCL)
+#select columns by name
+mySymbols <- tickersCL %>%
+  select(Ticker)
+
+mySymbols
+
+getsymb
+
+
+
+
+
+#str('TickersCL')             #structure
+
+
+
+```
+
+
+
